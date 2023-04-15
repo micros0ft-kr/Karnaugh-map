@@ -1,1 +1,138 @@
+import sys
+input = sys.stdin.readline
+minterm = list(map(int, input().split()))
+idx_table = [[0,1,3,2],[4,5,7,6],[12,13,15,14],[8,9,11,10]]
+map = [[0 for _ in range(4)] for _ in range(4)]
+copy_map = [[0 for _ in range(8)] for _ in range(8)]
+map_slice = []
+min_sop = []
+var = ['A','B','C','D']
+dx = [1,0,-1,0]
+dy = [0,1,0,-1]
 
+def makeMap():
+  for i in range(4):
+    for j in range(4):
+      if idx_table[i][j] in minterm:
+        map[i][j] = 1
+
+def makeCopyMap():
+  for i in range(4):
+    for j in range(4):
+      copy_map[i][j] = copy_map[i+4][j] = copy_map[i][j+4] = copy_map[i+4][j+4] = map[i][j]
+
+def checkBox(m,n):
+  global map_slice
+  for i in range(6-m):
+    for j in range(6-n):
+      for k in range(m):
+        map_slice.append(copy_map[(i+k)%4][j:j+n])
+      combineCheck(i,j)
+      map_slice = []
+
+def combineCheck(row,col):
+  x = len(map_slice); y = len(map_slice[0])
+  for i in range(x):
+    for j in range(y):
+      if not map_slice[i][j]:
+        return
+  else:
+    for a in range(x):
+      if 1 in map_slice[a]:
+        for i in range(row,row+x):
+          for j in range(col,col+y):
+            idx_x = i%4; idx_y = j%4
+            map[idx_x][idx_y] = x*y
+            if i == row and j == col:
+              AND = idx_table[idx_x][idx_y]
+              not_AND = ~idx_table[idx_x][idx_y]
+            else:
+              AND &= idx_table[idx_x][idx_y]
+              not_AND &= (~idx_table[idx_x][idx_y])
+        break
+    else:
+      return
+  not_AND = ~not_AND
+  AND = bin(AND)[2:]
+  not_AND = bin(not_AND)[2:]
+  while len(AND) < 4:
+    AND = '0'+AND
+  while len(not_AND) < 4:
+    not_AND = '0'+not_AND
+
+  PI = ""
+  for i in range(4):
+    if AND[i] == '1':
+      PI += var[i]
+
+    if not_AND[i] == '0':
+      PI = PI + var[i].lower()
+  min_sop.append(PI)
+  makeCopyMap()
+
+def isInclude(a,b):
+  tar = len(a); cnt = 0
+  for i in b:
+    if i in a: cnt += 1
+  if tar == cnt: return True
+  return False
+
+def consensus():
+  length = len(min_sop)
+  tmp = []
+  for i in range(length):
+    try:
+      for j in range(len(min_sop[i])):
+        a = min_sop[i]
+        pivot = min_sop[i][j]
+        tmp.append(a.replace(pivot,''))
+        if pivot.isupper():
+          find = pivot.lower()
+        else:
+          find = pivot.upper()
+        for k in range(length):
+          try:
+            if find in min_sop[k]:
+              b = min_sop[k]
+              tmp.append(b.replace(find,''))
+              c = tmp[0] + tmp[1]
+              for h in min_sop:
+                if isInclude(c,h) and len(c) == len(h):
+                  min_sop.remove(h)
+              tmp.pop()
+          except: pass
+        tmp = []
+    except: pass
+makeMap()
+makeCopyMap()
+
+m = n = 4
+while n:
+  if m != n: checkBox(m,n); checkBox(n,m)
+  else: checkBox(m,n)
+  if n == 1 and m == 2: pass
+  elif n == 1:
+    n <<= 1; m >>= 1; continue
+  n >>= 1
+min_sop = list(set(min_sop))
+
+consensus()
+for i in range(6):
+  for j in range(6):
+    if copy_map[i%4][j%4] == 1:
+      x = i%4; y = j%4
+    else: continue
+    for k in range(4):
+      if copy_map[x+dx[k]][y+dy[k]] == 1: break
+    else:
+      u = ''
+      solo = bin(idx_table[i%4][j%4])[2:]
+      for h in range(len(solo)):
+        if solo[h] == '0': u += var[h].lower()
+        else: u += var[h]
+      min_sop.append(u)
+
+for i in range(len(min_sop)):
+  for j in min_sop[i]:
+    if j.islower(): min_sop[i] = min_sop[i].replace(j,j.upper()+"'")
+print(*min_sop, sep = ' + ')
